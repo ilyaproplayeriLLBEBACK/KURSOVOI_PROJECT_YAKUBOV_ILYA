@@ -59,12 +59,12 @@ def select_factors(df, target, factors, corr_threshold=0.85, vif_threshold=10.0)
     2. VIF > vif_threshold → убираем фактор с максимальным VIF
     Возвращает список отобранных факторов и лог решений.
     """
-    log =[]
+    log = []
     corr = df[factors + [target]].corr()
 
     # --- Шаг 1а: попарная корреляция ---
     active = list(factors)
-    removed_corr =[]
+    removed_corr = []
     changed = True
     while changed:
         changed = False
@@ -87,7 +87,7 @@ def select_factors(df, target, factors, corr_threshold=0.85, vif_threshold=10.0)
                 break
 
     # --- Шаг 1б: VIF ---
-    removed_vif =[]
+    removed_vif = []
     if len(active) >= 2:
         changed = True
         while changed:
@@ -230,13 +230,13 @@ def search_best_model(df, target, factors, alpha=0.05):
     Y = df[target]
 
     # Подмножества факторов по убыванию размера (приоритет — полный набор)
-    subsets =[]
+    subsets = []
     for r in range(len(factors), 0, -1):
         for combo in combinations(factors, r):
             subsets.append(list(combo))
 
     # Типы моделей от простых к сложным
-    configs =[
+    configs = [
         ('ols',  0,     0),
         ('ols',  0,     1),
         ('ar',   1,     0),
@@ -258,8 +258,6 @@ def search_best_model(df, target, factors, alpha=0.05):
     print(f"             затем — на меньших подмножествах (только если нужно).\n")
 
     tried = 0
-    # Внешний цикл — подмножества (от полного к меньшим)
-    # Внутренний — типы моделей
     for cols in subsets:
         for cfg_type, cfg_ar, cfg_diff in configs:
             tried += 1
@@ -281,7 +279,6 @@ def search_best_model(df, target, factors, alpha=0.05):
             ar_tests = check_assumptions(m, resid, result['X_use'], alpha=alpha)
             ok = all_ok(ar_tests)
 
-            # Краткий статус
             if ok:
                 print(f"  [{tried:>3}/{total}]  ✅  {label}")
             else:
@@ -375,7 +372,7 @@ def make_report_figure(df, time_col, target, result, yhat, ci,
     Y_full    = df[target].values
     periods   = list(df[time_col].astype(str))
     steps     = len(yhat)
-    fut_labels =[f"+{i+1}" for i in range(steps)]
+    fut_labels = [f"+{i+1}" for i in range(steps)]
 
     # Восстанавливаем fitted в уровнях
     try:
@@ -429,18 +426,14 @@ def make_report_figure(df, time_col, target, result, yhat, ci,
     all_x   = np.concatenate([x_hist, x_fut])
     all_lbl = periods + fut_labels
 
-    # История
     ax_main.plot(x_hist, Y_full, color=C['text'], lw=2.2,
                  marker='o', ms=4, zorder=4, label='Факт')
-    # Подгонка
     ax_main.plot(x_hist, fitted_levels, color=C['fit'],
                  lw=1.6, linestyle='--', alpha=0.85, zorder=3, label='Подгонка')
-    # Разделитель
     ax_main.axvline(len(Y_full) - 0.5, color=C['border'],
                     lw=1.2, linestyle=':', alpha=0.9)
     ax_main.axvspan(len(Y_full) - 0.5, len(Y_full) + steps,
                     color=C['forecast'], alpha=0.06)
-    # Доверительный интервал
     if ci is not None:
         try:
             ax_main.fill_between(x_fut,
@@ -450,7 +443,6 @@ def make_report_figure(df, time_col, target, result, yhat, ci,
                                  label='ДИ 95%')
         except Exception:
             pass
-    # Прогноз
     ax_main.plot(x_fut, yhat, color=C['forecast'],
                  lw=2.5, marker='D', ms=7, zorder=5, label='Прогноз')
 
@@ -477,28 +469,20 @@ def make_report_figure(df, time_col, target, result, yhat, ci,
     ax_corr.set_title('МАТРИЦА КОЭФФИЦИЕНТОВ ПАРНОЙ ЛИНЕЙНОЙ КОРРЕЛЯЦИИ',
                       color=C['text'], fontsize=9.5, fontweight='bold', pad=7)
 
-    # Берём Y + все исходные факторы (до отбора) для полной картины
     all_numeric_cols = [target] + list(df.select_dtypes(include=np.number).columns.difference([target]))
     corr_df = df[all_numeric_cols].corr()
     n_vars  = len(corr_df)
 
-    # Кастомная цветовая карта: красный → тёмный → синий
     cmap_corr = LinearSegmentedColormap.from_list(
-        'dark_corr',[(0.0, '#F85149'),   # -1  красный
-         (0.5, '#1C2128'),   # 0   почти чёрный
-         (1.0, '#58A6FF')],  # +1  синий
-        N=256
-    )
+        'dark_corr', [(0.0, '#F85149'), (0.5, '#1C2128'), (1.0, '#58A6FF')], N=256)
 
     mat = corr_df.values
     im  = ax_corr.imshow(mat, cmap=cmap_corr, vmin=-1, vmax=1, aspect='auto')
 
-    # Сетка-разделители
     for i in range(n_vars + 1):
         ax_corr.axhline(i - 0.5, color=C['bg'], lw=1.0)
         ax_corr.axvline(i - 0.5, color=C['bg'], lw=1.0)
 
-    # Подписи осей
     ax_corr.set_xticks(range(n_vars))
     ax_corr.set_yticks(range(n_vars))
     ax_corr.set_xticklabels(corr_df.columns, rotation=30, ha='right',
@@ -506,11 +490,9 @@ def make_report_figure(df, time_col, target, result, yhat, ci,
     ax_corr.set_yticklabels(corr_df.columns, fontsize=8.5, color=C['text'])
     ax_corr.tick_params(length=0)
 
-    # Числа внутри ячеек
     for i in range(n_vars):
         for j in range(n_vars):
             val  = mat[i, j]
-            # Тёмный текст на светлых ячейках, светлый — на тёмных
             brightness = abs(val)
             txt_clr = C['bg'] if brightness > 0.55 else C['text']
             weight  = 'bold' if (i != j and abs(val) > 0.7) else 'normal'
@@ -518,16 +500,14 @@ def make_report_figure(df, time_col, target, result, yhat, ci,
                          ha='center', va='center',
                          fontsize=8.5, color=txt_clr, fontweight=weight)
 
-    # Выделить ячейки Y-строки и Y-столбца рамкой
-    y_idx = 0  # target — первый столбец
+    y_idx = 0
     for k in range(n_vars):
-        for (ri, ci_) in[(y_idx, k), (k, y_idx)]:
+        for (ri, ci_) in [(y_idx, k), (k, y_idx)]:
             rect = plt.Rectangle((ci_ - 0.5, ri - 0.5), 1, 1,
                                   fill=False, edgecolor=C['yellow'],
                                   lw=1.2, zorder=3)
             ax_corr.add_patch(rect)
 
-    # Colorbar
     cbar = plt.colorbar(im, ax=ax_corr, fraction=0.03, pad=0.02)
     cbar.ax.tick_params(colors=C['muted'], labelsize=7)
     cbar.outline.set_edgecolor(C['border'])
@@ -538,7 +518,6 @@ def make_report_figure(df, time_col, target, result, yhat, ci,
 
     factor_colors = [C['accent'], C['green'], C['purple'],
                      C['yellow'], C['forecast']]
-    t_all   = np.arange(len(df) + steps)
     t_hist2 = np.arange(len(df))
     t_fut2  = np.arange(len(df), len(df) + steps)
 
@@ -565,10 +544,10 @@ def make_report_figure(df, time_col, target, result, yhat, ci,
                       fontsize=9.5, fontweight='bold', pad=7)
     ax_tbl.axis('off')
 
-    rows =[]
-    colors_cells =[]
+    rows = []
+    colors_cells = []
     for test_name, (passed, stat, pval, desc) in tests.items():
-        icon   = '✅' if passed else '❌'
+        icon    = '✅' if passed else '❌'
         verdict = 'ВЫПОЛНЕНО' if passed else 'НАРУШЕНО'
         rows.append([icon, test_name, desc, verdict])
         clr_v = C['green'] if passed else C['red']
@@ -604,7 +583,7 @@ def make_report_figure(df, time_col, target, result, yhat, ci,
                        fontsize=9.5, fontweight='bold', pad=7)
     ax_card.axis('off')
 
-    card_lines =[]
+    card_lines = []
     last_hist = Y_full[-1]
     for i, val in enumerate(yhat):
         chg = (val / last_hist - 1) * 100 if i == 0 else (val / yhat[i-1] - 1) * 100
@@ -621,13 +600,12 @@ def make_report_figure(df, time_col, target, result, yhat, ci,
                      transform=ax_card.transAxes, ha='center')
         ax_card.text(0.97, y_pos, chg, color=clr,
                      fontsize=9, transform=ax_card.transAxes, ha='right')
-        line = plt.Line2D([0.02, 0.98],[y_pos - 0.09, y_pos - 0.09],
+        line = plt.Line2D([0.02, 0.98], [y_pos - 0.09, y_pos - 0.09],
                           color=C['border'], lw=0.5,
                           transform=ax_card.transAxes, figure=fig)
         fig.add_artist(line)
         y_pos -= 0.18
 
-    # Мультиколлинеарность — плашка
     if removed_corr or removed_vif:
         note = "Удалены (мультикол.): "
         if removed_corr:
@@ -638,12 +616,10 @@ def make_report_figure(df, time_col, target, result, yhat, ci,
                  ha='center', fontsize=7.5,
                  color=C['yellow'], alpha=0.8)
 
-    # Заголовок
     try:
         r2 = result['model'].rsquared
         r2_adj = result['model'].rsquared_adj
     except Exception:
-        # Для SARIMAX считаем вручную
         try:
             y_fit = result['model'].fittedvalues.values
             y_true = result['Y_use'].values
@@ -662,7 +638,6 @@ def make_report_figure(df, time_col, target, result, yhat, ci,
         color=C['text'], fontsize=13, fontweight='bold', y=0.975
     )
 
-    # Плашка R² на главном графике
     if r2 is not None:
         r2_lines = [f"R²      = {r2:.4f}"]
         if r2_adj is not None:
@@ -709,6 +684,16 @@ def run_universal_modeling(df, forecast_steps=4, alpha=0.05,
         print("  ✅  Мультиколлинеарность не обнаружена.")
     print(f"\n  Итоговый набор факторов: {final_factors}")
 
+    # ── VIF после отбора ─────────────────────────────────────────
+    if len(final_factors) >= 2:
+        X_vif_fin = sm.add_constant(df[final_factors])
+        vif_vals  = {final_factors[i]: variance_inflation_factor(X_vif_fin.values, i + 1)
+                     for i in range(len(final_factors))}
+        vif_str   = "  ".join(f"{k}={v:.2f}" for k, v in vif_vals.items())
+        print(f"  VIF после отбора:        {vif_str}")
+    elif len(final_factors) == 1:
+        print(f"  VIF после отбора:        {final_factors[0]}=1.00  (один фактор)")
+
     # ── ЭТАП 2: ПОИСК МОДЕЛИ ─────────────────────────────────────
     print(f"\n{SEP}")
     print(f"  ЭТАП 2 / 4  │  ПОИСК ОПТИМАЛЬНОЙ МОДЕЛИ")
@@ -734,31 +719,26 @@ def run_universal_modeling(df, forecast_steps=4, alpha=0.05,
     print(f"  ЭТАП 3 / 4  │  ИТОГИ МОДЕЛИРОВАНИЯ")
     print(SEP)
 
-    # Выводим верхнюю часть стандартного summary (информация о модели)
     try:
         print(result['model'].summary().tables[0])
     except Exception:
         pass
 
-    # Выводим кастомную таблицу коэффициентов
     print(f"\n  Оценка коэффициентов:")
     print(f"  {'─'*77}")
     print(f"  {'Переменная':<15} | {'coef':>10} | {'std err':>10} | {'p-value':>10} | {'5% уровень':>10} | {'1% уровень':>10}")
     print(f"  {'─'*77}")
 
     params = result['model'].params
-    bse = result['model'].bse
-    pvals = result['model'].pvalues
+    bse    = result['model'].bse
+    pvals  = result['model'].pvalues
 
     for var_name in params.index:
-        coef = params[var_name]
-        err = bse[var_name]
-        pval = pvals[var_name]
-
+        coef  = params[var_name]
+        err   = bse[var_name]
+        pval  = pvals[var_name]
         lvl_5 = "Да" if pval < 0.05 else "Нет"
         lvl_1 = "Да" if pval < 0.01 else "Нет"
-
-        # Обрезаем имя переменной до 15 символов, чтобы таблица не ломалась
         print(f"  {var_name[:15]:<15} | {coef:>10.4f} | {err:>10.4f} | {pval:>10.4f} | {lvl_5:>10} | {lvl_1:>10}")
     print(f"  {'─'*77}\n")
 
@@ -803,30 +783,41 @@ def run_universal_modeling(df, forecast_steps=4, alpha=0.05,
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 data = {
-    'Период':['19Q1','19Q2','19Q3','19Q4',
-                     '20Q1','20Q2','20Q3','20Q4',
-                     '21Q1','21Q2','21Q3','21Q4',
-                     '22Q1','22Q2','22Q3','22Q4',
-                     '23Q1','23Q2','23Q3','23Q4',
-                     '24Q1','24Q2','24Q3','24Q4'],
-    'Wage_Y':[1011.0,1074.6,1119.6,1158.5,
-                     1155.4,1222.4,1277.9,1351.2,
-                     1321.6,1416.4,1461.2,1541.6,
-                     1553.7,1588.7,1650.8,1731.4,
-                     1731.2,1861.0,1947.8,2071.0,
-                     2065.5,2222.3,2339.1,2461.2],
-    'GDP_X1':[91.3,98.3,107.1,108.9,91.4,95.4,107.2,108.8,
-                     92.7,101.2,108.4,110.2,92.5,93.2,102.6,104.7,
-                     91.0,98.9,109.0,110.3,95.1,104.7,113.7,113.6],
-    'Employed_X2':[4928.0,4888.7,4951.3,4909.6,4820.5,4855.9,4939.5,4919.4,
-                     4785.6,4875.3,4913.4,4823.3,4771.1,4856.5,4906.6,4845.4,
-                     4725.5,4821.2,4830.5,4827.5,4800.9,4829.8,4827.6,4736.1],
-    'Unempl_X3':[4.56,4.35,3.88,3.98,4.11,4.20,3.97,4.07,
-                     4.16,3.98,3.66,3.77,3.72,3.67,3.36,3.57,
-                     3.60,3.38,3.36,3.48,3.26,3.00,2.85,3.03],
-    'CPI_X4':[85.6,86.4,86.6,87.6,89.6,90.9,91.5,93.5,
-                     97.0,99.4,100.6,103.1,108.7,116.4,118.5,117.3,
-                     119.3,120.5,121.0,123.0,126.0,127.7,128.4,129.8]
+    'Период':['19Q1','19Q2','19Q3','19Q4', '20Q1','20Q2','20Q3','20Q4',
+             '21Q1','21Q2','21Q3','21Q4', '22Q1','22Q2','22Q3','22Q4',
+             '23Q1','23Q2','23Q3','23Q4', '24Q1','24Q2','24Q3','24Q4'],
+
+    'Wage_Y':[1011.0, 1074.6, 1119.6, 1158.5, 1155.4, 1222.4, 1277.9, 1351.2,
+             1321.6, 1416.4, 1461.2, 1541.6, 1553.7, 1588.7, 1650.8, 1731.4,
+             1731.2, 1861.0, 1947.8, 2071.0, 2065.5, 2222.3, 2339.1, 2461.2],
+
+    'GDP_X1':[91.3, 98.3, 107.1, 108.9, 91.4, 95.4, 107.2, 108.8,
+             92.7, 101.2, 108.4, 110.2, 92.5, 93.2, 102.6, 104.7,
+             91.0, 98.9, 109.0, 110.3, 95.1, 104.7, 113.7, 113.6],
+
+    'Employed_X2':[4928.0, 4888.7, 4951.3, 4909.6, 4820.5, 4855.9, 4939.5, 4919.4,
+                  4785.6, 4875.3, 4913.4, 4823.3, 4771.1, 4856.5, 4906.6, 4845.4,
+                  4725.5, 4821.2, 4830.5, 4827.5, 4800.9, 4829.8, 4827.6, 4736.1],
+
+    'Unempl_X3':[4.56, 4.35, 3.88, 3.98, 4.11, 4.20, 3.97, 4.07,
+                4.16, 3.98, 3.66, 3.77, 3.72, 3.67, 3.36, 3.57,
+                3.60, 3.38, 3.36, 3.48, 3.26, 3.00, 2.85, 3.03],
+
+    'CPI_X4':[85.6, 86.4, 86.6, 87.6, 89.6, 90.9, 91.5, 93.5,
+             97.0, 99.4, 100.6, 103.1, 108.7, 116.4, 118.5, 117.3,
+             119.3, 120.5, 121.0, 123.0, 126.0, 127.7, 128.4, 129.8],
+
+    'RefRate_X5':[10.0, 10.0, 10.0, 9.2, 8.8, 8.2, 7.7, 7.7,
+                 7.7, 8.2, 9.2, 9.2, 10.2, 12.0, 12.0, 12.0,
+                 11.2, 10.2, 9.5, 9.5, 9.5, 9.5, 9.5, 9.5],
+
+    'USD_X6':[2.15, 2.09, 2.07, 2.09, 2.22, 2.40, 2.48, 2.57,
+             2.59, 2.54, 2.51, 2.50, 2.76, 2.65, 2.58, 2.48,
+             2.72, 2.92, 3.12, 3.22, 3.23, 3.21, 3.19, 3.32],
+
+    'Retail_X7':[106.0, 105.3, 104.7, 105.1, 107.1, 100.1, 101.4, 101.2,
+                102.5, 104.1, 99.4, 101.1, 99.5, 93.4, 90.2, 94.7,
+                96.5, 105.1, 108.5, 110.1, 113.1, 112.4, 111.0, 109.8]
 }
 
 my_df = pd.DataFrame(data)
